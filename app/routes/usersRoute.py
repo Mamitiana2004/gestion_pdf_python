@@ -34,18 +34,3 @@ def login_user(request:LoginRequest):
 
     return result
 
-
-
-@router.post("/test")
-async def extract_ocr(file: UploadFile = File(...)):
-    text = ""
-    with pdfplumber.open(file.file) as pdf:
-        for page in pdf.pages:
-            text += page.extract_text().replace("\n"," ")
-            
-    qa_pipeline = pipeline("question-answering", model="deepset/roberta-base-squad2")
-
-    question = "Extraire les donnée waybill"
-    result = qa_pipeline(question=question,context=text)
-    return {"result": result}
-

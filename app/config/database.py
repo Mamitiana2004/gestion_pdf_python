@@ -1,6 +1,8 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
@@ -24,3 +26,14 @@ def getConnection() :
         return conn
     except Exception as e :
         print("Erreur {e}")
+
+
+def getSessionLocal():
+    DATABASE_URL = "postgresql+psycopg2://"+DB_USER+":"+DB_PASSWORD+"@"+DB_HOST+":"+DB_PORT+"/"+DB_NAME
+    engine = create_engine(DATABASE_URL)
+
+
+    # Création d'une session
+    SessionLocal = sessionmaker(bind=engine,autoflush=True)
+    session = SessionLocal()
+    return session

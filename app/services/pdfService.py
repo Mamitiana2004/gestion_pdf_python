@@ -1,38 +1,116 @@
-import re
+from transformers import pipeline
 import pdfplumber
-from fastapi import File,UploadFile
+import re
+from fastapi import File, UploadFile
+from typing import List, Dict
 
-
-def extract_text_with_plumber(file: UploadFile = File(...)):
-    text_data=[]
+# Fonction pour extraire le texte d'un PDF page par page
+def extract_text_with_plumber(file: UploadFile = File(...)) -> List[str]:
+    text_data = []
+    i = 0
     with pdfplumber.open(file.file) as pdf:
         for page in pdf.pages:
             text = page.extract_text()
-            text_data.append(text.replace("\n"," "))
-        
+            if text:
+                text_data.append(text.replace("\n", " "))
+                break
     return text_data
 
+# Fonction pour extraire les informations structurées avec un modèle de question-réponse
+def extract_data_with_qa(text: str) -> Dict:
+    # Charger un modèle de question-réponse
+    qa_pipeline = pipeline("question-answering", model="deepset/roberta-base-squad2")
 
+    # Questions pour extraire les champs
+    questions = {
+        "Vessel_Code": "What is the vessel code?",
+        "Vessel_Name": "What is the name of the vessel?",
+        "Voyage": "What is the voyage number?",
+        "Flag": "What is the flag of the vessel?",
+        "DateOfSail": "What is the date of sail?",
+        "DateOfArrival": "What is the date of arrival?",
+        "PortOfLoading": "What is the port of loading?",
+        "PortOfDischarge": "What is the port of discharge?",
+        "PlaceOfDelivery": "What is the place of delivery?",
+        "BLNo": "What is the B/L number?",
+        "BookingNo": "What is the booking number?",
+        "Shipper_Name": "What is the name of the shipper?",
+        "Shipper_Address": "What is the address of the shipper?",
+        "Consignee_Name": "What is the name of the consignee?",
+        "Consignee_Address": "What is the address of the consignee?",
+        "NotifyParty_Name": "What is the name of the notify party?",
+        "NotifyParty_Address": "What is the address of the notify party?",
+        "MarksAndNos": "What are the marks and numbers?",
+        "DescriptionOfGoods": "What is the description of goods?",
+        "Weight": "What is the weight of the goods?",
+        "Measurement": "What is the measurement of the goods?",
+        "FreightDetails": "What are the freight details?",
+    }
 
-
-def extract_info(pdf_text):
+    # Extraire les réponses
     data = {}
-    # Numéro de suivi (ex: "Tracking Number: AB123456789")
-    tracking_pattern = r"VESSEL\s:\s*(\w+)"
-    match = re.search(tracking_pattern, pdf_text)
-    data["vessel"] = match.group(1) if match else "Non trouvé"
+    for key, question in questions.items():
+        try:
+            result = qa_pipeline(question=question, context=text)
+            data[key] = result["answer"]
+        except Exception as e:
+            data[key] = "Non trouvé"  # En cas d'erreur, retourner "Non trouvé"
 
-    # Expéditeur (ex: "Shipper: John Doe, New York, USA")
-    shipper_pattern = r"Voyage:\s*([\w\s,]+)"
-    match = re.search(shipper_pattern, pdf_text)
-    data["shipper"] = match.group(1) if match else "Non trouvé"
+    # Structurer les données dans le format JSON souhaité
+    structured_data = {
+        "Vessel": {
+            "Code": data.get("Vessel_Code"),
+            "Name": data.get("Vessel_Name"),
+            "Voyage": data.get("Voyage"),
+            "Flag": data.get("Flag"),
+            "DateOfSail": data.get("DateOfSail"),
+            "DateOfArrival": data.get("DateOfArrival"),
+            "PortOfLoading": data.get("PortOfLoading"),
+            "PortOfDischarge": data.get("PortOfDischarge"),
+            "PlaceOfDelivery": data.get("PlaceOfDelivery"),
+        },
+        "B/LNo": data.get("BLNo"),
+        "BookingNo": data.get("BookingNo"),
+        "Shipper": {
+            "Name": data.get("Shipper_Name"),
+            "Address": data.get("Shipper_Address"),
+        },
+        "Consignee": {
+            "Name": data.get("Consignee_Name"),
+            "Address": data.get("Consignee_Address"),
+        },
+        "NotifyParty": {
+            "Name": data.get("NotifyParty_Name"),
+            "Address": data.get("NotifyParty_Address"),
+        },
+        "MarksAndNos": data.get("MarksAndNos"),
+        "DescriptionOfGoods": data.get("DescriptionOfGoods"),
+        "Weight": data.get("Weight"),
+        "Measurement": data.get("Measurement"),
+        "FreightDetails": data.get("FreightDetails"),
+    }
 
-    # Destinataire (ex: "Consignee: Jane Smith, Paris, France")
-    consignee_pattern = r"Flag:\s*([\w\s,]+)"
-    match = re.search(consignee_pattern, pdf_text)
-    data["consignee"] = match.group(1) if match else "Non trouvé"
+    return structured_data
 
-    # Date d'expédition (ex: "Date: 12/02/2024")
-    date_pattern = r"Date \s*(\d{2}/\d{2}/\d{4})"
-    match = re.search(date_pattern, pdf_text)
-    data["date"] = match.group(1) if match else "Non trouvé"
+# Fonction principale pour traiter le PDF et retourner un tableau de JSON
+def process_pdf(file: UploadFile = File(...)) -> List[Dict]:
+    # Extraire le texte page par page
+    text_data = extract_text_with_plumber(file)
+
+    # Traiter chaque page et extraire les données
+    structured_data = []
+    for page_text in text_data:
+        page_data = extract_data_with_qa(page_text)
+        structured_data.append(page_data)
+
+    return structured_data
+ 
+
+
+
+
+
+
+
+
+
