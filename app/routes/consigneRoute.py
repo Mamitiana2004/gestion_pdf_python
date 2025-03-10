@@ -14,7 +14,7 @@ class AddConsigne(BaseModel):
     name:str
     adresse:str
 
-@router.post("create")
+@router.post("/create")
 def create_new_consigne(request:AddConsigne):
     createNewConsigne(name=request.name,adresse=request.adresse)
     return {"success":"TRUE"}

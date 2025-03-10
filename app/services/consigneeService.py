@@ -1,9 +1,9 @@
 from app.models.test import Consigne
 from app.config.database import getSessionLocal
 
-def getAllConsigne(id):
+def getAllConsigne():
     session = getSessionLocal()
-    consigne = session.query(Consigne).filter_by(id = id).first()
+    consigne = session.query(Consigne).all()
     session.close()
     return consigne
 
@@ -11,6 +11,7 @@ def createNewConsigne(name,adresse):
     session = getSessionLocal()
     newConsigne = Consigne(name = name,adresse = adresse)
     session.add(newConsigne)
+    session.commit()
     session.close()
 
 def updateConsigne(id,name,adresse):
