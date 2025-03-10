@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import usersRoute,pdfRoute,adminRoute,shipperRoute
+from app.routes import usersRoute,pdfRoute,adminRoute,shipperRoute,consigneRoute
 from app.middleware.auth_middleware import JWTAuthMiddleware
 
 
@@ -28,4 +28,5 @@ app.add_middleware(JWTAuthMiddleware)
 app.include_router(pdfRoute.router, prefix="/api/pdf",tags=["PDFs"])
 app.include_router(usersRoute.router, prefix="/users", tags=["Users"])
 app.include_router(shipperRoute.router,prefix="/api/shipper",tags=["shippers"])
+app.include_router(consigneRoute.router,prefix="/api/consigne",tags=["consignees"])
 app.include_router(adminRoute.router,prefix="/api/admin",tags=["ADMIN"])
