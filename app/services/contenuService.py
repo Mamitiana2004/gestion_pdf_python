@@ -7,3 +7,4 @@ def createNewContenu(pdf_id,page,contenu):
     newContenu = Contenu(pdf_id = pdf_id,page = page,contenu = contenu)
     session.add(newContenu)
     session.commit()
+    session.close()

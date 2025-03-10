@@ -1,7 +1,8 @@
 from transformers import pipeline
 import pdfplumber
 from fastapi import File, UploadFile
-from typing import List, Dict
+from typing import List, Dict,Tuple
+from app.services.contenuService import createNewContenu
 
 # Fonction pour extraire le texte d'un PDF page par page
 def extract_text_with_plumber(file: UploadFile = File(...)) -> List[Tuple[int, str]]:
@@ -13,16 +14,17 @@ def extract_text_with_plumber(file: UploadFile = File(...)) -> List[Tuple[int, s
                 text_data.append((page_number,text.replace("\n", " ")))
     return text_data
 
+
 # Fonction pour extraire les informations structurées avec un modèle de question-réponse
 def extract_data_with_qa(text: str) -> Dict:
     # Charger un modèle de question-réponse
-    qa_pipeline = pipeline("question-answering", model="deepset/roberta-base-squad2")
+    qa_pipeline = pipeline("question-answering", model="microsoft/deberta-v3-large")
 
     # Questions pour extraire les champs
     questions = {
         "Vessel_Code": "What is the vessel code?",
         "Vessel_Name": "What is the name of the vessel?",
-        "Voyage": "What is the voyage number?",
+        "Voyage": "What is the voyage code?",
         "Flag": "What is the flag of the vessel?",
         "DateOfSail": "What is the date of sail?",
         "DateOfArrival": "What is the date of arrival?",
@@ -90,13 +92,14 @@ def extract_data_with_qa(text: str) -> Dict:
     return structured_data
 
 # Fonction principale pour traiter le PDF et retourner un tableau de JSON
-def process_pdf(file: UploadFile = File(...)) -> List[Dict]:
+def process_pdf(file: UploadFile = File(...),file_pdf = None) -> List[Dict]:
     # Extraire le texte page par page
     text_data = extract_text_with_plumber(file)
 
     # Traiter chaque page et extraire les données
     structured_data = []
-    for page_text in text_data:
+    for page_number,page_text in text_data:
+        createNewContenu(pdf_id= file_pdf.id,page= page_number,contenu= page_text)
         page_data = extract_data_with_qa(page_text)
         structured_data.append(page_data)
 
