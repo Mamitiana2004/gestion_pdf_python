@@ -54,7 +54,8 @@ create table cargo(
 
 create table file_pdf(
     id serial primary key,
-    nom varchar(255)
+    nom varchar(255),
+    nom_serveur varchar(255)
 );
 
 create table pdf_manifest(

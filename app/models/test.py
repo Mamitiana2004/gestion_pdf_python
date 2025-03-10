@@ -66,6 +66,7 @@ class FilePDF(Base):
     __tablename__ = 'file_pdf'
     id = Column(Integer, primary_key=True, autoincrement=True)
     nom = Column(String(255), nullable=False)
+    nom_serveur = Column(String(255),nullable=False)
     manifests = relationship("Manifest", secondary="pdf_manifest", back_populates="pdfs")
     contenus = relationship("Contenu", back_populates="pdf")
 

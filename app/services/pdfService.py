@@ -1,19 +1,16 @@
 from transformers import pipeline
 import pdfplumber
-import re
 from fastapi import File, UploadFile
 from typing import List, Dict
 
 # Fonction pour extraire le texte d'un PDF page par page
-def extract_text_with_plumber(file: UploadFile = File(...)) -> List[str]:
+def extract_text_with_plumber(file: UploadFile = File(...)) -> List[Tuple[int, str]]:
     text_data = []
-    i = 0
     with pdfplumber.open(file.file) as pdf:
-        for page in pdf.pages:
+        for page_number,page in enumerate(pdf.pages,start=1):
             text = page.extract_text()
             if text:
-                text_data.append(text.replace("\n", " "))
-                break
+                text_data.append((page_number,text.replace("\n", " ")))
     return text_data
 
 # Fonction pour extraire les informations structurées avec un modèle de question-réponse
