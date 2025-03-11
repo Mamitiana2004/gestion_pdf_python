@@ -13,7 +13,7 @@ UPLOAD_DIR = "upload"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-@router.post("/extract-test")
+@router.post("/import")
 async def extract(file: UploadFile = File(...)):
 
     if not file.filename.endswith(".pdf"):

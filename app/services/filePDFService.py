@@ -8,3 +8,9 @@ def createNewFilePDF(nom,nom_serveur):
     session.commit()
     session.refresh(newFilePDF)
     return newFilePDF
+
+def getById(id):
+    session = getSessionLocal()
+    filePDF = session.query(FilePDF).filter_by(id = id).first()
+    session.close()
+    return filePDF

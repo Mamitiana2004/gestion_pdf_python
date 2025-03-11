@@ -18,7 +18,7 @@ def extract_text_with_plumber(file: UploadFile = File(...)) -> List[Tuple[int, s
 # Fonction pour extraire les informations structurées avec un modèle de question-réponse
 def extract_data_with_qa(text: str) -> Dict:
     # Charger un modèle de question-réponse
-    qa_pipeline = pipeline("question-answering", model="microsoft/deberta-v3-large")
+    qa_pipeline = pipeline("question-answering", model="deepset/roberta-base-squad2")
 
     # Questions pour extraire les champs
     questions = {
