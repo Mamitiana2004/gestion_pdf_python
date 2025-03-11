@@ -3,15 +3,21 @@ import pdfplumber
 from fastapi import File, UploadFile
 from typing import List, Dict,Tuple
 from app.services.contenuService import createNewContenu
+from app.services.manifestService import importManifest
 
 # Fonction pour extraire le texte d'un PDF page par page
 def extract_text_with_plumber(file: UploadFile = File(...)) -> List[Tuple[int, str]]:
     text_data = []
+    i = 0
     with pdfplumber.open(file.file) as pdf:
         for page_number,page in enumerate(pdf.pages,start=1):
             text = page.extract_text()
-            if text:
-                text_data.append((page_number,text.replace("\n", " ")))
+            i = i+1
+            if i == 2 :
+                if text:
+                    text_data.append((page_number,text.replace("\n", " ")))
+            if i == 3:
+                break
     return text_data
 
 
@@ -102,9 +108,25 @@ def process_pdf(file: UploadFile = File(...),file_pdf = None) -> List[Dict]:
         createNewContenu(pdf_id= file_pdf.id,page= page_number,contenu= page_text)
         page_data = extract_data_with_qa(page_text)
         structured_data.append(page_data)
-
+        insert_data_manifest(page_data)
     return structured_data
  
+def insert_data_manifest(data:Dict):
+    vessel_data : Dict = data.get("Vessel",{})
+    vessel_code = vessel_data.get("Code")
+    vessel = vessel_data.get("Name")
+    if vessel_code not in vessel :
+        vessel = vessel_code+" "+vessel
+
+    flag = vessel_data.get("Flag")
+    voyage = vessel_data.get("Voyage")
+    date_arrive = vessel_data.get("DateOfArrival")
+    importManifest(
+        vessel= vessel,
+        flag= flag,
+        voyage= voyage,
+        date_arrive= date_arrive
+    )
 
 
 

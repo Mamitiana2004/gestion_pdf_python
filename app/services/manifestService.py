@@ -1,6 +1,6 @@
 from app.models.test import Manifest
 from app.config.database import getSessionLocal
-
+from app.services.rechercheService import sont_presque_pareils
 
 def getAllManifest():
     session = getSessionLocal()
@@ -20,7 +20,9 @@ def createNewManifest(vessel,flag,voyage,date_arrive):
     newManifest = Manifest(vessel = vessel,flag = flag,voyage = voyage,date_arrive = date_arrive)
     session.add(newManifest)
     session.commit()
+    session.refresh(newManifest)
     session.close()
+    return newManifest
 
 def updateManifest(id,vessel,flag,voayge,date_arrive):
     session = getSessionLocal()
@@ -45,3 +47,27 @@ def deleteManifest(id):
     session.commit()
     session.close()
 
+def getManifestByVessel(vessel):
+    session = getSessionLocal()
+    manifest = session.query(Manifest).filter_by(vessel = vessel).first()
+    session.close()
+    return manifest
+
+
+def importManifest(vessel,flag,voyage,date_arrive):
+    session = getSessionLocal()
+    manifestExistant = getManifestByVessel(vessel= vessel)
+    if manifestExistant:
+        session.close()
+        return manifestExistant
+
+    manifests = session.query(Manifest).all()
+    for manifest in manifests : 
+        isPareil = sont_presque_pareils(manifest.vessel,vessel)
+        if isPareil :
+            session.close()
+            return manifest
+
+    session.close()
+    newManifest = createNewManifest()
+    return newManifest
