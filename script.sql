@@ -1,6 +1,4 @@
 create database manifest;
-
-
 \c manifest
 
 create table utilisateur(
@@ -45,10 +43,15 @@ create table cargo_produit(
     description_produit text
 );
 
+create table vin_produit(
+    id serial primary key,
+    cargo_id int references cargo(id),
+    vin varchar(255)
+);
+
 create table file_pdf(
     id serial primary key,
     nom varchar(255),
-    nom_serveur varchar(255),
     pdf bytea
 );
 
@@ -62,7 +65,6 @@ create table pdf_page(
     cargo_id int references cargo(id),
     page int 
 );
-
 
 create table contenu(
     pdf_id int references file_pdf(id) on delete cascade,

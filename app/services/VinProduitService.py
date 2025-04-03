@@ -10,4 +10,7 @@ def createVinProduit(cargo_id,vin):
     )
 
     session.add(newVin)
-    session.cre
+    session.commit()
+    session.refresh(newVin)
+    session.close()
+    return newVin

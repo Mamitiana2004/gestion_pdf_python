@@ -8,9 +8,9 @@ def getAllPdf():
     session.close()
     return filePdf
 
-def createNewFilePDF(nom,nom_serveur,pdf):
+def createNewFilePDF(nom,pdf):
     session = getSessionLocal()
-    newFilePDF = FilePDF(nom = nom,nom_serveur = nom_serveur,pdf = pdf)
+    newFilePDF = FilePDF(nom = nom,pdf = pdf)
     session.add(newFilePDF)
     session.commit()
     session.refresh(newFilePDF)

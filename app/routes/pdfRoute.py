@@ -9,7 +9,7 @@ import uuid
 from app.services.filePDFService import getPDF
 from fastapi.responses import StreamingResponse
 import io
-from app.services.testService import pdf_to_json
+from app.services.testService import insert_pdf_data
 
 router = APIRouter()
 
@@ -36,7 +36,6 @@ async def getAllPDF():
         files_info.append({
             "id": document.id,
             "nom": document.nom,
-            "nom_serveur": document.nom_serveur
         })
     return {"data":files_info}
 
@@ -67,6 +66,7 @@ async def extract(file: UploadFile = File(...)):
         for page_number,page_text in text_data:
             createNewContenu(pdf_id= file_pdf.id,page= page_number,contenu= page_text)
         
+
 
         # Supprimer le fichier temporaire
         os.remove(temp_pdf_path)
@@ -103,15 +103,8 @@ async def get_pdf(name:str):
 
 
 @router.post("/tt")
-def tet(file: UploadFile):
-    json_data = pdf_to_json(file)
-    if not json_data.get("vessel") or not json_data.get("voyage"):
-            raise HTTPException(status_code=400, detail="Données manquantes: vessel ou voyage requis")
-    
-    
-
-    return pdf_to_json(file)
-
+async def tet(file: UploadFile):
+    return await insert_pdf_data(file)
 
 # @router.post("/import")
 # async def upload_pdf(file: UploadFile):

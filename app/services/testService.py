@@ -4,12 +4,16 @@ from fastapi import UploadFile, File,HTTPException
 from typing import Dict, List
 import json
 import re
-
+import os
 
 from app.services.vesselService import createOrGetVessel
 from app.services.voyageService import getOrCreateVoyage
 from app.services.cargoService import createCargo
 from app.services.cargoProduitService import createCargoProduit
+from app.services.VinProduitService import createVinProduit
+from app.services.filePDFService import createNewFilePDF
+from app.services.pdfService import extract_text_with_plumber
+from app.services.contenuService import createNewContenu
 
 genai.configure(api_key="AIzaSyDO3i0OLsGj6v_hvVlnJ-MKU1P0-nEH_3Q")
 model = genai.GenerativeModel('gemini-1.5-pro-latest')
@@ -46,7 +50,7 @@ JSON_TEMPLATE = {
     ]
 }
 
-def extract_text_with_plumber(file: UploadFile) -> str:
+def extract_text(file: UploadFile) -> str:
     text_data = []
     try:
         with pdfplumber.open(file.file) as pdf:
@@ -58,33 +62,44 @@ def extract_text_with_plumber(file: UploadFile) -> str:
     except Exception as e:
         raise ValueError(f"Erreur lors de l'extraction du PDF: {str(e)}")
 
-def clean_json_response(text: str) -> str:
+import re
+import json
+from json.decoder import JSONDecodeError
+
+def clean_json_response(text: str) -> dict:
     """
-    Nettoie la réponse de Gemini pour obtenir un JSON valide
+    Nettoie la réponse de Gemini pour obtenir un JSON valide avec gestion d'erreur renforcée
     """
     try:
-        # Suppression des marqueurs de code
-        json_str = text.strip()
-        json_str = re.sub(r'^```json|```$', '', json_str, flags=re.MULTILINE)
+        # Suppression des marqueurs de code et commentaires
+        json_str = re.sub(r'^```(json)?|```$', '', text.strip(), flags=re.MULTILINE)
+        json_str = re.sub(r'//.*?\n', '', json_str)  # Supprime les commentaires //
         
         # Correction des problèmes courants
         json_str = json_str.replace("'", '"')  # Remplace les simples quotes
         json_str = re.sub(r'(\w)\s+(\w)', r'\1_\2', json_str)  # Espaces dans les clés
-        json_str = re.sub(r',\s*}', '}', json_str)  # Virgules traînantes
-        json_str = re.sub(r',\s*]', ']', json_str)  # Virgules traînantes
+        json_str = re.sub(r',\s*([}\]])', r'\1', json_str)  # Virgules traînantes
+        
+        # Gestion des valeurs non-entre-guillemets
+        json_str = re.sub(r':\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}])', r': "\1"\2', json_str)
         
         # Validation de base
-        if not json_str.strip().startswith('{'):
+        json_str = json_str.strip()
+        if not json_str.startswith('{'):
             json_str = '{' + json_str
-        if not json_str.strip().endswith('}'):
+        if not json_str.endswith('}'):
             json_str = json_str + '}'
             
         return json.loads(json_str)
-    except json.JSONDecodeError as e:
-        error_context = json_str[max(0,e.pos-50):min(len(json_str),e.pos+50)]
-        raise ValueError(f"Invalid JSON at position {e.pos}: ...{error_context}...")
+    except JSONDecodeError as e:
+        # Log l'erreur et le contexte pour debug
+        error_context = text[max(0,e.pos-50):min(len(text),e.pos+50)]
+        print(f"ERREUR JSON: {str(e)}")
+        print(f"CONTEXTE: ...{error_context}...")
+        print(f"TEXTE COMPLET: {text[:1000]}...")  # Truncated pour lisibilité
+        raise ValueError(f"La réponse n'est pas un JSON valide: {str(e)}")
     except Exception as e:
-        raise ValueError(f"Cleaning failed: {str(e)}")
+        raise ValueError(f"Erreur de traitement JSON: {str(e)}")
 
 def pdf_to_json(file: UploadFile) -> Dict:
     if not file.filename.lower().endswith('.pdf'):
@@ -92,7 +107,7 @@ def pdf_to_json(file: UploadFile) -> Dict:
     
     # Extraction texte
     try:
-        text = extract_text_with_plumber(file)
+        text = extract_text(file)
         if not text:
             raise ValueError("Aucun texte trouvé dans le PDF")
     except Exception as e:
@@ -128,7 +143,24 @@ def pdf_to_json(file: UploadFile) -> Dict:
         raise ValueError(f"Erreur API Gemini: {str(e)}")
     
 
-def insert_pdf_data(file):
+async def insert_pdf_data(file:UploadFile):
+    file_name = os.path.splitext(file.filename)[0]
+
+    data_file =await file.read()
+
+    pdf_file = createNewFilePDF(nom= file_name,pdf= data_file)
+
+    try:
+        # Extraire le texte du PDF
+        
+        text_data = extract_text_with_plumber(file)
+        
+        for page_number,page_text in text_data:
+            createNewContenu(pdf_id= pdf_file.id,page= page_number,contenu= page_text)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors du traitement du PDF : {str(e)}")
+
     json_data : Dict = pdf_to_json(file)
     if not json_data.get("vessel") or not json_data.get("voyage"):
         raise HTTPException(status_code=400, detail="Données manquantes: vessel ou voyage requis")
@@ -141,7 +173,7 @@ def insert_pdf_data(file):
         date_arrive= json_data["date_of_arrival"]
     )
 
-    for cargo_data in json_data("cargo",[]):
+    for cargo_data in json_data.get("cargo",[]):
         cargo = createCargo(
             voyage_id=voyage.id,
             port_depart=json_data.get("port_of_loading", "Inconnu"),
@@ -159,3 +191,12 @@ def insert_pdf_data(file):
                 cargo_id=cargo.id,
                 description_produit=f"Shipper: {cargo_data.get('shipper', {}).get('name')}"
             )
+
+        for vin in cargo_data.get("vin", []):
+            vin_produit = createVinProduit(
+                cargo_id= cargo.id,
+                vin = vin
+            )
+
+    
+    return {"message": "Import réussi", "vessel_id": vessel.id, "voyage_id": voyage.id}

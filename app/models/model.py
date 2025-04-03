@@ -43,7 +43,7 @@ class Cargo(Base) :
     port_depart = Column(String(255),nullable=False)
     date_depart = Column(Date,nullable=False)
     shipper = Column(String(255),nullable=False)
-    consigne = Column(String(255),nullable=True)
+    consignee = Column(String(255),nullable=True)
     bl_no = Column(String(50), nullable=False)
     poid =  Column(Numeric(10, 2))
     volume = Column(Numeric(10,2))
@@ -76,18 +76,11 @@ class FilePDF(Base):
     __tablename__ = 'file_pdf'
     id = Column(Integer, primary_key=True, autoincrement=True)
     nom = Column(String(255), nullable=False)
-    nom_serveur = Column(String(255),nullable=False)
     pdf = Column(LargeBinary,nullable = False)
         
-    voyages = relationship("Voyage", secondary="pdf_voyages", back_populates="pdfs")
     contenus = relationship("Contenu", back_populates="pdf")
 
-# Table d'association pour `pdf_voyages`
-pdf_voyages = Table(
-    'pdf_voyages', Base.metadata,
-    Column('pdf_id', Integer, ForeignKey('file_pdf.id',ondelete='CASCADE')),
-    Column('voyage', Integer, ForeignKey('voyage.id',ondelete='SET NULL'))
-)
+
 
 # Modèle pour la table `contenu`
 class Contenu(Base):
@@ -98,5 +91,3 @@ class Contenu(Base):
     
     pdf = relationship("FilePDF", back_populates="contenus")
 
-# Relations supplémentaires
-Voyage.pdfs = relationship("FilePDF", secondary="pdf_voyages", back_populates="voyages")

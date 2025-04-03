@@ -20,9 +20,9 @@ def createCargo(voyage_id,port_depart,date_depart,shipper,consigne,bl_no,poid,vo
         port_depart = port_depart,
         date_depart = datetime.strptime(date_depart, "%Y-%m-%d").date(),
         shipper = shipper,
-        consigne = consigne,
-        weight = Decimal(poid),
-        measurement = Decimal(volume)
+        consignee = consigne,
+        poid = Decimal(poid),
+        volume = Decimal(volume)
     )
 
     session.add(newCargo)
