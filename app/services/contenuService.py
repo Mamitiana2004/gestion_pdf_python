@@ -1,5 +1,5 @@
 from app.config.database import getSessionLocal
-from app.models.test import Contenu
+from app.models.model import Contenu
 
 
 def createNewContenu(pdf_id,page,contenu):

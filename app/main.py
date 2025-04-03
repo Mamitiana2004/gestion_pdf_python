@@ -1,13 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import usersRoute,pdfRoute,adminRoute,shipperRoute,consigneRoute,manifestRoute,cargoRoute,rechercheRoute
+from app.routes import usersRoute,pdfRoute,adminRoute,vesselRoute,voyageRoute,rechercheRoute
 from app.middleware.auth_middleware import JWTAuthMiddleware
 
 
 app = FastAPI()
 
+
+    # "https://gestion-pdf-front-git-main-mamitiana2004s-projects.vercel.app"
+
 origins = [
-    "http://localhost:3000"
+    "https://gestion-pdf-front-git-main-mamitiana2004s-projects.vercel.app"
 ]
 
 @app.get("/")
@@ -22,14 +25,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(JWTAuthMiddleware)
+app.add_middleware(JWTAuthMiddleware)   
 
 
 app.include_router(pdfRoute.router, prefix="/api/pdf",tags=["PDFs"])
+app.include_router(vesselRoute.router,prefix="/vessel",tags=["vessels"])
+app.include_router(voyageRoute.router,prefix="/voyage",tags=["voyages"])
 app.include_router(usersRoute.router, prefix="/users", tags=["Users"])
-app.include_router(shipperRoute.router,prefix="/api/shipper",tags=["shippers"])
-app.include_router(consigneRoute.router,prefix="/api/consigne",tags=["consignees"])
+# app.include_router(shipperRoute.router,prefix="/api/shipper",tags=["shippers"])
+# app.include_router(consigneRoute.router,prefix="/api/consigne",tags=["consignees"])
 app.include_router(adminRoute.router,prefix="/api/admin",tags=["ADMIN"])
-app.include_router(manifestRoute.router,prefix="/api/manifest",tags=["Manifests"])
-app.include_router(cargoRoute.router,prefix="/api/cargo",tags=["cargos"])
+# app.include_router(manifestRoute.router,prefix="/api/manifest",tags=["Manifests"])
+# app.include_router(cargoRoute.router,prefix="/api/cargo",tags=["cargos"])
 app.include_router(rechercheRoute.router,prefix="/api/search",tags=["recherches"])

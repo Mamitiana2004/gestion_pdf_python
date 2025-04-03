@@ -12,6 +12,8 @@ class Utilisateur(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     identifiant = Column(String(255), nullable=False, unique=True)
     password = Column(Text, nullable=False)
+    date_creation = Column(Date,nullable=False)
+    date_login = Column(Date,nullable = False)
 
 # Modèle pour la table `manifest`
 class Manifest(Base):

@@ -29,7 +29,8 @@ def getConnection() :
 
 
 def getSessionLocal():
-    DATABASE_URL = "postgresql+psycopg2://"+DB_USER+":"+DB_PASSWORD+"@"+DB_HOST+":"+DB_PORT+"/"+DB_NAME
+    #DATABASE_URL = "postgresql+psycopg2://postgres.eevnxzwewffagbvdlkgk:WzSu7z8T4KFYpqeL@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
+    DATABASE_URL = "postgresql+psycopg2://postgres:pass@localhost:5432/manifest"
     engine = create_engine(DATABASE_URL)
 
 

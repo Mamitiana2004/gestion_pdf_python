@@ -1,7 +1,10 @@
 import jwt
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import HTTPException
-from app.config.config import ALGORITHM,SECRET_KEY
+
+
+SECRET_KEY = "kjdqslkdjsqlkdjsqkdsqjdlkqsjdqlkjdkqlfjqskdfjqk"
+ALGORITHM = "HS256"
 
 class JWTAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):

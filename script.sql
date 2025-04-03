@@ -1,67 +1,67 @@
 create database manifest;
 
+
 \c manifest
 
 create table utilisateur(
     id serial primary key,
     identifiant varchar(255),
-    password text
+    password text,
+    date_create date,
+    date_login date
 );
 
-insert into utilisateur(identifiant,password) values ('admin','admn');
+insert into utilisateur(identifiant,password,date_create,date_login) values('admin','admin','2025-02-05','2025-05-05');
 
-    
-create table manifest(
+create table vessel(
     id serial primary key,
-    vessel varchar(50),
-    flag varchar(50),
-    voyage varchar(50),
+    name varchar(255) unique,
+    flag varchar(255)
+);
+
+create table voyage(
+    id serial primary key,
+    code varchar(255),
+    vessel_id int references vessel(id),
     date_arrive date
-);
-
-
-create table shipper(
-    id serial primary key,
-    name varchar(255),
-    adresse varchar(255)
-);
-
-create table consigne(
-    id serial primary key,
-    name varchar(255),
-    adresse varchar(2550)
-);
-
-CREATE TABLE port (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255)
 );
 
 create table cargo(
     id serial primary key,
-    bl_no varchar(50),
-    manifest_id int references manifest(id) on delete cascade,
-    shipper_id int references shipper(id) on delete set null,
-    consigne_id int references consigne(id) on delete set null,
-    description_good TEXT,
-    weight DECIMAL(10,2),
-    measurement DECIMAL(10,2)
+    voyage_id int references voyage(id) on delete cascade,
+    port_depart varchar(255),
+    date_depart date,
+    shipper varchar(255),
+    consignee varchar(255),
+    bl_no varchar(255),
+    poid numeric(10,2),
+    volume numeric(10,2)
 );
 
-
-
--- gestion pdf 
+create table cargo_produit(
+    id serial primary key,
+    cargo_id int references cargo(id),
+    produit varchar(255),
+    description_produit text
+);
 
 create table file_pdf(
     id serial primary key,
     nom varchar(255),
-    nom_serveur varchar(255)
+    nom_serveur varchar(255),
+    pdf bytea
 );
 
-create table pdf_manifest(
+create table pdf_voyages(
     pdf_id int references file_pdf(id),
-    manifest_id int references manifest(id)
-);  
+    voyage_id int references voyage(id)
+);
+
+create table pdf_page(
+    pdf_id int references file_pdf(id),
+    cargo_id int references cargo(id),
+    page int 
+);
 
 
 create table contenu(
@@ -70,5 +70,4 @@ create table contenu(
     contenu text
 );
 
--- recherche dans les contenus 
-SELECT * FROM contenu where contenu LIKE '%m%';
+

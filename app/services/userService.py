@@ -1,22 +1,30 @@
 import jwt
 from app.config.database import getSessionLocal
 from app.services.tokenService import create_access_token
-from app.config.config import ALGORITHM,SECRET_KEY
-from app.models.test import Utilisateur
+from app.models.model import Utilisateur
+from datetime import date
 
+
+SECRET_KEY = "kjdqslkdjsqlkdjsqkdsqjdlkqsjdqlkjdkqlfjqskdfjqk"
+ALGORITHM = "HS256"
 
 def login(identifiant,password):    
     session = getSessionLocal()
 
 
     utilisateur = session.query(Utilisateur).filter_by(identifiant=identifiant).first()
-    
+
     if utilisateur is None:
+        session.close()
         return {"error":"Utilisateur inconnue"}
      
     if  utilisateur.password == password :
-        return {"token":create_access_token({"user_id":utilisateur.id,"identifiant":utilisateur.identifiant}),"user":{"user_id":utilisateur.id,"identifiant":utilisateur.identifiant}}
+        session.commit()
+        data = {"token":create_access_token({"user_id":utilisateur.id,"identifiant":utilisateur.identifiant})}
+        session.close()
+        return data
     else :
+        session.close()
         return {"error":"Mot de passe incorrect"}
     
 
@@ -36,11 +44,13 @@ def getAll():
 
 def createNewUser(identifiant,password):
     session = getSessionLocal()
-    newUtilisateur = Utilisateur(identifiant=identifiant,password=password)
+    today = date.today()
+    newUtilisateur = Utilisateur(identifiant=identifiant,password=password,date_create = today,date_login=today)
     session.add(newUtilisateur)
     session.commit()
-    print(newUtilisateur.identifiant)
+    session.refresh(newUtilisateur)
     session.close()
+    return newUtilisateur
 
 def updateUser(id,identifiant,password):
     session = getSessionLocal()
@@ -54,8 +64,7 @@ def updateUser(id,identifiant,password):
 
     session.commit()
     session.close()
-
-    return {"success":"true"}
+    return utilisateur
 
 def deleteUser(id) : 
     session = getSessionLocal()

@@ -69,5 +69,10 @@ def importManifest(vessel,flag,voyage,date_arrive):
             return manifest
 
     session.close()
-    newManifest = createNewManifest()
+    newManifest = createNewManifest(
+        vessel= vessel,
+        voyage= voyage,
+        flag= flag,
+        date_arrive=date_arrive
+    )   
     return newManifest

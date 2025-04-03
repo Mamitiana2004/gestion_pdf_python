@@ -2,7 +2,6 @@ import pdfplumber
 from app.services.userService import login,verifyToken
 from pydantic import BaseModel
 from fastapi import APIRouter, UploadFile, File,HTTPException,Header
-from transformers import pipeline
 
 router = APIRouter()
 

@@ -1,5 +1,5 @@
 import numpy as np
-from app.models.test import Contenu,FilePDF
+from app.models.model import Contenu,FilePDF
 from app.config.database import getSessionLocal
 from app.services.filePDFService import getById
 
@@ -51,3 +51,9 @@ def search_in_contenu(text):
 
     session.close()
     return result
+
+def search_pdf_name(text):
+    session = getSessionLocal()
+    resultat = session.query(FilePDF).filter(FilePDF.nom.like("%"+text+"%")).all()
+    session.close()
+    return resultat
