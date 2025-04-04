@@ -1,19 +1,20 @@
 import google.generativeai as genai
 import pdfplumber
-from fastapi import UploadFile, File,HTTPException
+from fastapi import UploadFile, HTTPException
 from typing import Dict, List
 import json
 import re
 import os
 
-from app.services.vesselService import createOrGetVessel
-from app.services.voyageService import getOrCreateVoyage
-from app.services.cargoService import createCargo
-from app.services.cargoProduitService import createCargoProduit
-from app.services.VinProduitService import createVinProduit
-from app.services.filePDFService import createNewFilePDF
+from app.services.vesselService import createOrGetVessel,getVesselId,searchVesselByName
+from app.services.voyageService import getOrCreateVoyage,getVoyageById,getVoyageByVessel,search_voyage_name,search_voyage_entre_date
+from app.services.cargoService import createCargo,getCargoByVoyage
+from app.services.cargoProduitService import createCargoProduit,getCargo_ProduitByCargo
+from app.services.VinProduitService import createVinProduit,getVinByCargo
+from app.services.filePDFService import createNewFilePDF,getById
 from app.services.pdfService import extract_text_with_plumber
 from app.services.contenuService import createNewContenu
+from app.services.pdfVoyageService import getPDFVoyagesByPDF_Id,getPDFVoyageByVoyage,createNewPDFVoyages
 
 genai.configure(api_key="AIzaSyDO3i0OLsGj6v_hvVlnJ-MKU1P0-nEH_3Q")
 model = genai.GenerativeModel('gemini-1.5-pro-latest')
@@ -21,14 +22,13 @@ model = genai.GenerativeModel('gemini-1.5-pro-latest')
 JSON_TEMPLATE = {
     "vessel": "",               # Code ou nom du navire (ex: "MAERSK HONG KONG")
     "flag": "",                 # Pavillon du navire (ex: "Panama")
-    "voyage": "",               # Numéro de voyage (ex: "2107E")
-    "date_of_sail": "",         # Port d'arrivée (ex: "ANTWERP")
+    "voyage": "",               # Numéro de voyage (ex: "2107E")    
     "date_of_arrival": "",         # Date d'arrivée (format: "2024-07-15")
     "port_of_loading": "",       # Port de départ (ex: "SHANGHAI") 
     "port_of_discharge": "",       # Date de départ (format: "2024-06-20")
     "cargo": [
         {
-            "B/L No": "",  
+            "Booking No(Bn)": "",  
             "shipper": {                # Expéditeur
                 "name": "",             # (ex: "COSCO SHIPPING CO., LTD")
                 "address": ""           # Adresse complète
@@ -118,7 +118,7 @@ def pdf_to_json(file: UploadFile) -> Dict:
     Transformez ce document maritime en JSON strictement conforme à ce schéma :
     {json.dumps(JSON_TEMPLATE, indent=2, ensure_ascii=False)}
 
-    Règles :
+    Règles IMPÉRATIVES:
     - Conservez TOUTES les données originales sans modification
     - Ne pas inventer ou inférer de données manquantes
     - Pour les champs manquants : utiliser null
@@ -126,7 +126,7 @@ def pdf_to_json(file: UploadFile) -> Dict:
     - Répondez UNIQUEMENT avec le JSON valide, sans commentaires
 
     Document :
-    {text[:100000]}  # Limite raisonnable
+    {text[:500000]}  # Limite raisonnable
     """
 
     # Appel API avec gestion d'erreur
@@ -148,12 +148,12 @@ async def insert_pdf_data(file:UploadFile):
 
     data_file =await file.read()
 
-    pdf_file = createNewFilePDF(nom= file_name,pdf= data_file)
 
     try:
         # Extraire le texte du PDF
         
         text_data = extract_text_with_plumber(file)
+        pdf_file = createNewFilePDF(nom= file_name,pdf= data_file,page= len(text_data))
         
         for page_number,page_text in text_data:
             createNewContenu(pdf_id= pdf_file.id,page= page_number,contenu= page_text)
@@ -173,30 +173,125 @@ async def insert_pdf_data(file:UploadFile):
         date_arrive= json_data["date_of_arrival"]
     )
 
+    createNewPDFVoyages(pdf_id= pdf_file.id, voyage_id= voyage.id)
+
     for cargo_data in json_data.get("cargo",[]):
         cargo = createCargo(
             voyage_id=voyage.id,
             port_depart=json_data.get("port_of_loading", "Inconnu"),
-            date_depart=json_data["date_of_sail"],
-            shipper=cargo_data.get("shipper", {}).get("name", "Inconnu")+" "+ cargo_data.get("shipper", {}).get("address"),
-            consigne=cargo_data.get("consignee", {}).get("name")+" "+ cargo_data.get("consignee", {}).get("address"),
-            bl_no=cargo_data.get("B/L No", ""),
+            shipper=cargo_data.get("shipper", {}).get("name", "Inconnu")+"|"+ cargo_data.get("shipper", {}).get("address"),
+            consigne=cargo_data.get("consignee", {}).get("name")+"|"+ cargo_data.get("consignee", {}).get("address"),
+            bl_no=cargo_data.get("Booking No(BN)", ""),
             poid=cargo_data.get("gross_weight"),
             volume=cargo_data.get("measurements") 
         )
 
         if cargo_data.get("marchandise"):
-            produit = createCargoProduit(
+            createCargoProduit(
                 produit= cargo_data["marchandise"],
                 cargo_id=cargo.id,
                 description_produit=f"Shipper: {cargo_data.get('shipper', {}).get('name')}"
             )
 
         for vin in cargo_data.get("vin", []):
-            vin_produit = createVinProduit(
+            createVinProduit(
                 cargo_id= cargo.id,
                 vin = vin
             )
 
     
     return {"message": "Import réussi", "vessel_id": vessel.id, "voyage_id": voyage.id}
+
+def getDataPDF(pdf_id):
+    pdf_voyages = getPDFVoyagesByPDF_Id(pdf_id= pdf_id)
+    voyage = getVoyageById(pdf_voyages.voyage_id)
+    vessel = getVesselId(voyage.vessel_id)
+    cargos = getCargoByVoyage(voyage_id= voyage.id)
+
+    produits = []
+
+    for cargo in cargos:
+        cargo_produit = getCargo_ProduitByCargo(cargo.id)
+        vin = getVinByCargo(cargo= cargo.id)
+        produit = {
+            "cargo":cargo,
+            "produit":cargo_produit,
+            "vin":vin
+        }
+
+        produits.append(produit)
+
+
+    data : Dict = {
+        "vessel" : vessel,
+        "voyage" : voyage,
+        "cargo" : produits,
+    }
+
+    return data
+
+
+def searchPDFByVessel(search):
+    vessels = searchVesselByName(search)
+
+    pdfValue :List = []
+
+    for vessel in vessels:
+        voyages = getVoyageByVessel(vessel_id= vessel.id)
+        for voyage in voyages :
+            pdf_voyages = getPDFVoyageByVoyage(voyage_id= voyage.id)
+            filePDF = getById(pdf_voyages.pdf_id)
+            data ={
+                "id": filePDF.id,
+                "nom": filePDF.nom,
+                "date_ajout":filePDF.date_ajout,
+                "nombre_page":filePDF.page
+            }
+            pdfValue.append(data)
+
+    return pdfValue
+
+def searchPDFByVoyage(search):
+    voyages = search_voyage_name(search)
+
+    pdfValue :List = []
+
+    for voyage in voyages :
+        pdf_voyages = getPDFVoyageByVoyage(voyage_id= voyage.id)
+        filePDF = getById(pdf_voyages.pdf_id)
+        
+        data ={
+                "id": filePDF.id,
+                "nom": filePDF.nom,
+                "date_ajout":filePDF.date_ajout,
+                "nombre_page":filePDF.page
+            }
+        pdfValue.append(data)
+    
+    return pdfValue
+
+    
+
+def searchPDFByVoyageDate(date_debut,date_fin):
+    voyages = search_voyage_entre_date(date_debut,date_fin)
+
+    pdfValue :List = []
+
+    for voyage in voyages :
+        pdf_voyages = getPDFVoyageByVoyage(voyage_id= voyage.id)
+        filePDF = getById(pdf_voyages.pdf_id)
+
+        data ={
+                "id": filePDF.id,
+                "nom": filePDF.nom,
+                "date_ajout":filePDF.date_ajout,
+                "nombre_page":filePDF.page
+            }
+        pdfValue.append(data)
+    
+    return pdfValue
+
+    
+
+
+    

@@ -57,3 +57,4 @@ def search_pdf_name(text):
     resultat = session.query(FilePDF).filter(FilePDF.nom.like("%"+text+"%")).all()
     session.close()
     return resultat
+

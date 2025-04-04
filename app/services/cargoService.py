@@ -11,14 +11,14 @@ def getAllByManifest(manifest_id):
     return cargos 
     
 
-def createCargo(voyage_id,port_depart,date_depart,shipper,consigne,bl_no,poid,volume):
+def createCargo(voyage_id,port_depart,shipper,consigne,bl_no,poid,volume):
     session = getSessionLocal()
+    
     
     newCargo = Cargo(
         voyage_id = voyage_id,
         bl_no = bl_no,
         port_depart = port_depart,
-        date_depart = datetime.strptime(date_depart, "%Y-%m-%d").date(),
         shipper = shipper,
         consignee = consigne,
         poid = Decimal(poid),
@@ -34,5 +34,11 @@ def createCargo(voyage_id,port_depart,date_depart,shipper,consigne,bl_no,poid,vo
 def getCargoByBL(bl_no):
     session = getSessionLocal()
     cargo = session.query(Cargo).filter_by(bl_no = bl_no).first()
+    session.close()
+    return cargo
+
+def getCargoByVoyage(voyage_id):
+    session = getSessionLocal()
+    cargo = session.query(Cargo).filter_by(voyage_id = voyage_id).all()
     session.close()
     return cargo

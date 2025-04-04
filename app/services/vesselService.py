@@ -67,3 +67,20 @@ def createOrGetVessel(name,flag):
             flag= flag
         )
     return vessel
+
+
+def searchVesselByName(text):
+    session = getSessionLocal()
+    resultat = session.query(Vessel).filter(Vessel.name.like("%"+text+"%")).all() 
+    session.close()
+    return resultat
+
+def getAllFlag():
+    session = getSessionLocal()
+    vessels = session.query(Vessel).all()
+    session.close()
+    flags = []
+    for vessel in vessels :
+        flags.append(vessel.flag)
+    
+    return flags

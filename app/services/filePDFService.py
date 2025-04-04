@@ -1,6 +1,7 @@
 from app.config.database import getSessionLocal
 from app.models.model import FilePDF
 import io
+from datetime import date
 
 def getAllPdf():
     session = getSessionLocal()
@@ -8,9 +9,15 @@ def getAllPdf():
     session.close()
     return filePdf
 
-def createNewFilePDF(nom,pdf):
+def createNewFilePDF(nom,pdf,page):
     session = getSessionLocal()
-    newFilePDF = FilePDF(nom = nom,pdf = pdf)
+    today = date.today()
+    newFilePDF = FilePDF(
+        nom = nom,
+        pdf = pdf,
+        date_ajout = today,
+        page = page
+    )
     session.add(newFilePDF)
     session.commit()
     session.refresh(newFilePDF)
@@ -22,9 +29,9 @@ def getById(id):
     session.close()
     return filePDF
 
-def getPDF(nom_serveur):
+def getPDF(id):
     session = getSessionLocal()
-    filePDF = session.query(FilePDF).filter_by(nom_serveur = nom_serveur).first()
+    filePDF = session.query(FilePDF).filter_by(id = id).first()
     file_stream = io.BytesIO(filePDF.pdf)
     session.close()
     return file_stream

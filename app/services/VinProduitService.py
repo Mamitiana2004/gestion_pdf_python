@@ -14,3 +14,9 @@ def createVinProduit(cargo_id,vin):
     session.refresh(newVin)
     session.close()
     return newVin
+
+def getVinByCargo(cargo):
+    session = getSessionLocal()
+    vins = session.query(VinProduit).filter_by(cargo_id= cargo).all()
+    session.close()
+    return vins

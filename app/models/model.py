@@ -34,6 +34,7 @@ class Voyage(Base) :
 
     vessel = relationship('Vessel',back_populates='voyages')
     cargos = relationship('Cargo',back_populates='voyage')
+    voyage_pdf = relationship('PDF_Voyages',back_populates='voyages')
 
 class Cargo(Base) : 
     __tablename__ = 'cargo'
@@ -41,7 +42,6 @@ class Cargo(Base) :
     id = Column(Integer,primary_key=True,autoincrement=True)
     voyage_id = Column(Integer,ForeignKey('voyage.id',ondelete='CASCADE'))
     port_depart = Column(String(255),nullable=False)
-    date_depart = Column(Date,nullable=False)
     shipper = Column(String(255),nullable=False)
     consignee = Column(String(255),nullable=True)
     bl_no = Column(String(50), nullable=False)
@@ -77,8 +77,11 @@ class FilePDF(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     nom = Column(String(255), nullable=False)
     pdf = Column(LargeBinary,nullable = False)
+    date_ajout = Column(Date,nullable= False)
+    page = Column(Integer,nullable= False)
         
     contenus = relationship("Contenu", back_populates="pdf")
+    pdf_voyages = relationship("PDF_Voyages",back_populates= "pdf")
 
 
 
@@ -91,3 +94,13 @@ class Contenu(Base):
     
     pdf = relationship("FilePDF", back_populates="contenus")
 
+
+class PDF_Voyages(Base):
+
+    __tablename__ = "pdf_voyages"
+
+    pdf_id = Column(Integer,ForeignKey('file_pdf.id',ondelete= 'CASCADE'),primary_key=True)
+    voyage_id = Column(Integer ,ForeignKey('voyage.id',ondelete='CASCADE'),primary_key= True)
+
+    pdf = relationship("FilePDF", back_populates="pdf_voyages")
+    voyages = relationship("Voyage",back_populates= "voyage_pdf")

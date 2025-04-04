@@ -54,3 +54,20 @@ def getOrCreateVoyage(code,vessel_id,date_arrive):
 
     return voyage
 
+def search_voyage_name(text):
+    session = getSessionLocal()
+    voyage = session.query(Voyage).filter(Voyage.code.like("%"+text+"%")).all()
+    session.close()
+    return voyage
+
+def search_voyage_entre_date(date_debut =None,date_fin=None):
+    session = getSessionLocal()
+
+    voyage = session.query(Voyage)
+    if date_debut:
+        voyage = voyage.filter(Voyage.date_arrive >= date_debut)
+    if date_fin :
+        voyage = voyage.filter(Voyage.date_arrive <= date_fin)
+    voyage = voyage.all()
+    session.close()
+    return voyage

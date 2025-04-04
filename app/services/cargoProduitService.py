@@ -17,3 +17,10 @@ def createCargoProduit(produit , cargo_id, description_produit):
     session.close()
 
     return newCargoProduit
+
+
+def getCargo_ProduitByCargo(cargo_id):
+    session = getSessionLocal()
+    cargo_produit = session.query(CargoProduit).filter_by(cargo_id = cargo_id).all()
+    session.close()
+    return cargo_produit

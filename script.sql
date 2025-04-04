@@ -28,7 +28,6 @@ create table cargo(
     id serial primary key,
     voyage_id int references voyage(id) on delete cascade,
     port_depart varchar(255),
-    date_depart date,
     shipper varchar(255),
     consignee varchar(255),
     bl_no varchar(255),
@@ -52,18 +51,14 @@ create table vin_produit(
 create table file_pdf(
     id serial primary key,
     nom varchar(255),
-    pdf bytea
+    pdf bytea,
+    date_ajout date,
+    page int
 );
 
 create table pdf_voyages(
     pdf_id int references file_pdf(id),
     voyage_id int references voyage(id)
-);
-
-create table pdf_page(
-    pdf_id int references file_pdf(id),
-    cargo_id int references cargo(id),
-    page int 
 );
 
 create table contenu(
