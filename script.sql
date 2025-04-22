@@ -24,6 +24,11 @@ create table voyage(
     date_arrive date
 );
 
+create table pays_origine(
+    id serial primary key,
+    pays varchar(255)
+);
+
 create table cargo(
     id serial primary key,
     voyage_id int references voyage(id) on delete cascade,
@@ -31,6 +36,8 @@ create table cargo(
     shipper varchar(255),
     consignee varchar(255),
     bl_no varchar(255),
+    pays_origine_id int references pays_origine(id),    
+    quantite int,
     poid numeric(10,2),
     volume numeric(10,2)
 );

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import usersRoute,pdfRoute,adminRoute,vesselRoute,voyageRoute,rechercheRoute
+from app.routes import usersRoute,pdfRoute,adminRoute,vesselRoute,voyageRoute,rechercheRoute,statRoute
 from app.middleware.auth_middleware import JWTAuthMiddleware
 
 
@@ -10,7 +10,7 @@ app = FastAPI()
     # "https://gestion-pdf-front-git-main-mamitiana2004s-projects.vercel.app"
 
 origins = [
-    "https://gestion-pdf-front-git-main-mamitiana2004s-projects.vercel.app"
+    "http://localhost:3000"
 ]
 
 @app.get("/")
@@ -34,3 +34,4 @@ app.include_router(voyageRoute.router,prefix="/voyage",tags=["voyages"])
 app.include_router(usersRoute.router, prefix="/users", tags=["Users"])
 app.include_router(adminRoute.router,prefix="/api/admin",tags=["ADMIN"])
 app.include_router(rechercheRoute.router,prefix="/api/search",tags=["recherches"])
+app.include_router(statRoute.router,prefix="/api/stat",tags=["statistiques"])

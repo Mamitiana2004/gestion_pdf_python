@@ -2,7 +2,8 @@ from app.services.filePDFService import getAllPdf
 from fastapi import UploadFile,File,APIRouter,HTTPException
 from app.services.filePDFService import getPDF
 from fastapi.responses import StreamingResponse
-from app.services.testService import insert_pdf_data,getDataPDF
+from app.services.testService import insert_pdf_data,getDataPDF,test_pdf_par_page,getAllDataPDF
+from app.services.pdfService import extract_text_with_plumber
 
 router = APIRouter()
 
@@ -28,9 +29,17 @@ async def getAllPDF():
 async def extract(file: UploadFile):
     return await insert_pdf_data(file)
 
+@router.post("/test")
+def extract(file: UploadFile):
+    return test_pdf_par_page(file)
+
 @router.get("/get_test/{id}")
 def testget(id : int):
     return getDataPDF(id)
+
+@router.get("/get_all_data")
+def get_All_PDF():
+    return getAllDataPDF()
 
 @router.get("/{id}")
 async def get_pdf(id:int):

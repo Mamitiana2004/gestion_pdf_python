@@ -6,29 +6,29 @@ import json
 import re
 import os
 
-from app.services.vesselService import createOrGetVessel,getVesselId,searchVesselByName
+from app.services.vesselService import createOrGetVessel,getVesselId,searchVesselByName,getAllVessel
 from app.services.voyageService import getOrCreateVoyage,getVoyageById,getVoyageByVessel,search_voyage_name,search_voyage_entre_date
 from app.services.cargoService import createCargo,getCargoByVoyage
 from app.services.cargoProduitService import createCargoProduit,getCargo_ProduitByCargo
 from app.services.VinProduitService import createVinProduit,getVinByCargo
 from app.services.filePDFService import createNewFilePDF,getById
-from app.services.pdfService import extract_text_with_plumber
+from app.services.pdfService import extract_text_with_plumber,get_number_page
 from app.services.contenuService import createNewContenu
 from app.services.pdfVoyageService import getPDFVoyagesByPDF_Id,getPDFVoyageByVoyage,createNewPDFVoyages
 
 genai.configure(api_key="AIzaSyDO3i0OLsGj6v_hvVlnJ-MKU1P0-nEH_3Q")
-model = genai.GenerativeModel('gemini-1.5-pro-latest')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 JSON_TEMPLATE = {
     "vessel": "",               # Code ou nom du navire (ex: "MAERSK HONG KONG")
     "flag": "",                 # Pavillon du navire (ex: "Panama")
     "voyage": "",               # Numéro de voyage (ex: "2107E")    
     "date_of_arrival": "",         # Date d'arrivée (format: "2024-07-15")
-    "port_of_loading": "",       # Port de départ (ex: "SHANGHAI") 
-    "port_of_discharge": "",       # Date de départ (format: "2024-06-20")
     "cargo": [
         {
-            "Booking No(Bn)": "",  
+            "port_of_loading": "",       # Port de départ (ex: "SHANGHAI") 
+            "Booking_No(Bn)": "",        
+            "pays_origine":"",
             "shipper": {                # Expéditeur
                 "name": "",             # (ex: "COSCO SHIPPING CO., LTD")
                 "address": ""           # Adresse complète
@@ -67,9 +67,6 @@ import json
 from json.decoder import JSONDecodeError
 
 def clean_json_response(text: str) -> dict:
-    """
-    Nettoie la réponse de Gemini pour obtenir un JSON valide avec gestion d'erreur renforcée
-    """
     try:
         # Suppression des marqueurs de code et commentaires
         json_str = re.sub(r'^```(json)?|```$', '', text.strip(), flags=re.MULTILINE)
@@ -90,16 +87,17 @@ def clean_json_response(text: str) -> dict:
         if not json_str.endswith('}'):
             json_str = json_str + '}'
             
+        # Essayez de parser avec json.loads
         return json.loads(json_str)
     except JSONDecodeError as e:
-        # Log l'erreur et le contexte pour debug
         error_context = text[max(0,e.pos-50):min(len(text),e.pos+50)]
         print(f"ERREUR JSON: {str(e)}")
         print(f"CONTEXTE: ...{error_context}...")
-        print(f"TEXTE COMPLET: {text[:1000]}...")  # Truncated pour lisibilité
+        print(f"TEXTE COMPLET: {text[:1000]}...")
         raise ValueError(f"La réponse n'est pas un JSON valide: {str(e)}")
     except Exception as e:
         raise ValueError(f"Erreur de traitement JSON: {str(e)}")
+    
 
 def pdf_to_json(file: UploadFile) -> Dict:
     if not file.filename.lower().endswith('.pdf'):
@@ -126,7 +124,7 @@ def pdf_to_json(file: UploadFile) -> Dict:
     - Répondez UNIQUEMENT avec le JSON valide, sans commentaires
 
     Document :
-    {text[:500000]}  # Limite raisonnable
+    {text[:100000000]}  # Limite raisonnable
     """
 
     # Appel API avec gestion d'erreur
@@ -135,8 +133,8 @@ def pdf_to_json(file: UploadFile) -> Dict:
         if not response.text:
             raise ValueError("Réponse vide de l'API Gemini")
         
-        json_str = clean_json_response(response.text)
-        return json_str
+        # json_str = clean_json_response(response.text)
+        return response.text
     except json.JSONDecodeError as e:
         raise ValueError(f"Réponse JSON invalide: {str(e)}")
     except Exception as e:
@@ -147,8 +145,7 @@ async def insert_pdf_data(file:UploadFile):
     file_name = os.path.splitext(file.filename)[0]
 
     data_file =await file.read()
-
-
+    
     try:
         # Extraire le texte du PDF
         
@@ -168,9 +165,9 @@ async def insert_pdf_data(file:UploadFile):
     vessel = createOrGetVessel(name= json_data["vessel"],flag= json_data["flag"])
 
     voyage = getOrCreateVoyage(
-        code= json_data["voyage"],
+        code= json_data.get("voyage","Inconnu"),
         vessel_id= vessel.id,
-        date_arrive= json_data["date_of_arrival"]
+        date_arrive= json_data.get("date_of_arrival",None)
     )
 
     createNewPDFVoyages(pdf_id= pdf_file.id, voyage_id= voyage.id)
@@ -178,19 +175,21 @@ async def insert_pdf_data(file:UploadFile):
     for cargo_data in json_data.get("cargo",[]):
         cargo = createCargo(
             voyage_id=voyage.id,
-            port_depart=json_data.get("port_of_loading", "Inconnu"),
-            shipper=cargo_data.get("shipper", {}).get("name", "Inconnu")+"|"+ cargo_data.get("shipper", {}).get("address"),
-            consigne=cargo_data.get("consignee", {}).get("name")+"|"+ cargo_data.get("consignee", {}).get("address"),
-            bl_no=cargo_data.get("Booking No(BN)", ""),
-            poid=cargo_data.get("gross_weight"),
-            volume=cargo_data.get("measurements") 
+            port_depart=cargo_data.get("port_of_loading", "Inconnu"),
+            shipper=cargo_data.get("shipper", {}).get("name", "Inconnu")+"|"+ cargo_data.get("shipper", {}).get("address",""),
+            consigne=cargo_data.get("consignee", {}).get("name")+"|"+ cargo_data.get("consignee", {}).get("address",""),
+            bl_no=cargo_data.get("Booking_No(Bn)",""),
+            poid=cargo_data.get("gross_weight",0),
+            volume=cargo_data.get("measurements",0) ,
+            pays_name= cargo_data.get("pays_origine","Inconnu"),
+            quantite= cargo_data.get("quantity",0)
         )
 
         if cargo_data.get("marchandise"):
             createCargoProduit(
                 produit= cargo_data["marchandise"],
                 cargo_id=cargo.id,
-                description_produit=f"Shipper: {cargo_data.get('shipper', {}).get('name')}"
+                description_produit=f"Shipper: {cargo_data.get('shipper', {}).get('name','Inconnu')}"
             )
 
         for vin in cargo_data.get("vin", []):
@@ -229,6 +228,41 @@ def getDataPDF(pdf_id):
     }
 
     return data
+
+def getAllDataPDF():
+    vessels = getAllVessel()
+    result = []
+    for vessel in vessels :
+        voyages = getVoyageByVessel(vessel.id)
+        list_voyage = []
+        for voyage in voyages :
+            cargos = getCargoByVoyage(voyage_id= voyage.id)
+            produits = []
+            for cargo in cargos:
+                cargo_produit = getCargo_ProduitByCargo(cargo.id)
+                vin = getVinByCargo(cargo= cargo.id)
+                produit = {
+                    "cargo":cargo,
+                    "produit":cargo_produit,
+                    "vin":vin
+                }
+
+                produits.append(produit)
+
+            data_voyage = {
+                "voyage_data" : voyage,
+                "cargo" : produits
+            }
+            list_voyage.append(data_voyage)
+
+        data : Dict = {
+            "vessel" : vessel,
+            "voyage" : list_voyage
+        }
+
+        result.append(data)
+
+    return result
 
 
 def searchPDFByVessel(search):
@@ -292,6 +326,65 @@ def searchPDFByVoyageDate(date_debut,date_fin):
     return pdfValue
 
     
+
+
+async def test_pdf_par_page(file):
+    if not file.filename.lower().endswith('.pdf'):
+        raise ValueError("Le fichier doit être un PDF")
+    
+    file_name = os.path.splitext(file.filename)[0]
+    data_file =await file.read()
+
+    text_data = extract_text_with_plumber(file)
+    
+    number_page = get_number_page(file)
+    pdf_file = createNewFilePDF(nom= file_name,pdf= data_file,page= number_page)
+
+    for page_number,page_text in text_data:
+        createNewContenu(pdf_id= pdf_file.id,page= page_number,contenu= page_text)
+        json_data : Dict = pdf_to_json(file)
+        if not json_data.get("vessel") or not json_data.get("voyage"):
+            raise HTTPException(status_code=400, detail="Données manquantes: vessel ou voyage requis")
+        
+        vessel = createOrGetVessel(name= json_data["vessel"],flag= json_data["flag"])
+
+
+        voyage = getOrCreateVoyage(
+            code= json_data.get("voyage","Inconnu"),
+            vessel_id= vessel.id,
+            date_arrive= json_data.get("date_of_arrival",None)
+        )
+
+        createNewPDFVoyages(pdf_id= pdf_file.id, voyage_id= voyage.id)
+
+        for cargo_data in json_data.get("cargo",[]):
+            cargo = createCargo(
+                voyage_id=voyage.id,
+                port_depart=cargo_data.get("port_of_loading", "Inconnu"),
+                shipper=cargo_data.get("shipper", {}).get("name", "Inconnu")+"|"+ cargo_data.get("shipper", {}).get("address",""),
+                consigne=cargo_data.get("consignee", {}).get("name")+"|"+ cargo_data.get("consignee", {}).get("address",""),
+                bl_no=cargo_data.get("Booking_No(Bn)",""),
+                poid=cargo_data.get("gross_weight",0),
+                volume=cargo_data.get("measurements",0) ,
+                pays_name= cargo_data.get("pays_origine","Inconnu"),
+                quantite= cargo_data.get("quantity",0)
+            )
+
+            if cargo_data.get("marchandise"):
+                createCargoProduit(
+                    produit= cargo_data["marchandise"],
+                    cargo_id=cargo.id,
+                    description_produit=f"Shipper: {cargo_data.get('shipper', {}).get('name','Inconnu')}"
+                )
+
+            for vin in cargo_data.get("vin", []):
+                createVinProduit(
+                    cargo_id= cargo.id,
+                    vin = vin
+                )
+
+    return {"message": "Import réussi", "vessel_id": vessel.id, "voyage_id": voyage.id}
+
 
 
     

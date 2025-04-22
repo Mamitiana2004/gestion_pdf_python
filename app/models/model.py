@@ -36,6 +36,14 @@ class Voyage(Base) :
     cargos = relationship('Cargo',back_populates='voyage')
     voyage_pdf = relationship('PDF_Voyages',back_populates='voyages')
 
+class PaysOrigine(Base):
+    __tablename__ = "pays_origine"
+
+    id = Column(Integer,primary_key=True,autoincrement=True)
+    pays = Column(String,nullable = False)
+
+    cargos = relationship('Cargo',back_populates='pays_origine')
+
 class Cargo(Base) : 
     __tablename__ = 'cargo'
 
@@ -45,9 +53,12 @@ class Cargo(Base) :
     shipper = Column(String(255),nullable=False)
     consignee = Column(String(255),nullable=True)
     bl_no = Column(String(50), nullable=False)
+    pays_origine_id = Column(Integer,ForeignKey('pays_origine.id',ondelete='NULL'))
+    quantite = Column(Integer)
     poid =  Column(Numeric(10, 2))
     volume = Column(Numeric(10,2))
 
+    pays_origine = relationship('PaysOrigine',back_populates='cargos')
     cargo_produit = relationship('CargoProduit',back_populates='cargo')
     cargo_vin =relationship('VinProduit',back_populates= 'cargo')
     voyage = relationship('Voyage',back_populates='cargos')

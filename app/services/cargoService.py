@@ -3,17 +3,19 @@ from app.models.model import Cargo
 from decimal import Decimal
 from app.services.rechercheService import sont_presque_pareils
 from datetime import datetime
+from app.services.paysService import getOrCreatePays
 
-def getAllByManifest(manifest_id):
+def getAllCargo():
     session = getSessionLocal()
-    cargos = session.query(Cargo).filter_by(manifest_id = manifest_id).all()
+    cargos = session.query(Cargo).filter_by().all()
     session.close()
     return cargos 
     
 
-def createCargo(voyage_id,port_depart,shipper,consigne,bl_no,poid,volume):
+def createCargo(voyage_id,port_depart,shipper,consigne,bl_no,poid,volume,pays_name,quantite):
     session = getSessionLocal()
     
+    pays_origine = getOrCreatePays(pays_name=pays_name)
     
     newCargo = Cargo(
         voyage_id = voyage_id,
@@ -21,6 +23,8 @@ def createCargo(voyage_id,port_depart,shipper,consigne,bl_no,poid,volume):
         port_depart = port_depart,
         shipper = shipper,
         consignee = consigne,
+        pays_origine_id = pays_origine.id,
+        quantite = int(quantite),
         poid = Decimal(poid),
         volume = Decimal(volume)
     )
@@ -40,5 +44,12 @@ def getCargoByBL(bl_no):
 def getCargoByVoyage(voyage_id):
     session = getSessionLocal()
     cargo = session.query(Cargo).filter_by(voyage_id = voyage_id).all()
+    session.close()
+    return cargo
+
+
+def getCargoByPays(pays_id):
+    session = getSessionLocal()
+    cargo = session.query(Cargo).filter_by(pays_origine_id = pays_id).all()
     session.close()
     return cargo
